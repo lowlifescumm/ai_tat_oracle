@@ -32,7 +32,7 @@ function App() {
     setResult(null)
 
     try {
-      const response = await fetch('https://ai-tattoo-api.onrender.com:10000/api/generate_tattoo', {
+      const response = await fetch('https://ai-tattoo-api.onrender.com/api/generate_tattoo', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
