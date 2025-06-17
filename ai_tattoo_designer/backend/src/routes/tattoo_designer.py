@@ -6,11 +6,16 @@ import uuid
 import requests
 from io import BytesIO
 import base64
+import json
 
 tattoo_bp = Blueprint("tattoo_bp", __name__)
 
 # Initialize OpenAI client
 openai.api_key = os.getenv('OPENAI_API_KEY')
+
+# OpenRouter configuration
+OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 def get_zodiac_sign(day, month):
     if (month == 1 and day >= 20) or (month == 2 and day <= 18):
@@ -44,8 +49,78 @@ def calculate_life_path_number(dob):
         dob_sum = sum(int(digit) for digit in str(dob_sum))
     return dob_sum
 
+def generate_tattoo_reading_with_openrouter(first_name, last_name, date_of_birth, age, zodiac_sign, life_path_number):
+    """Generate a unique tattoo reading using OpenRouter as backup"""
+    
+    prompt = f"""
+    You are a mystical AI tattoo oracle designer, inspired by tarot reading and symbolic divination. 
+    Your task is to create a unique, meaningful tattoo design concept based on the following information:
+    
+    - First Name: {first_name}
+    - Last Name: {last_name}
+    - Date of Birth: {date_of_birth}
+    - Age: {age}
+    - Zodiac Sign: {zodiac_sign}
+    - Life Path Number: {life_path_number}
+    
+    Please provide your response in the following JSON format:
+    {{
+        "symbolic_analysis": "Interpret name numerology, zodiac sign, and any relevant symbolic meanings derived from DOB and age.",
+        "core_tattoo_theme": "Describe the emotional, spiritual, or archetypal essence the tattoo should express.",
+        "visual_motif_description": "Provide a vivid, imaginative description of the tattoo's visual elements (symbols, shapes, animals, patterns, etc.).",
+        "placement_suggestion": "Recommend ideal body placement and size (e.g., upper forearm, chest, sleeve, ankle).",
+        "mystical_insight": "End with a brief fortune-style message tied to the design meaning.",
+        "image_prompt": "A detailed prompt for generating the tattoo image, describing the visual elements in a way suitable for AI image generation."
+    }}
+    
+    Style & Tone:
+    - Mysterious yet poetic
+    - Tarot card reader meets visionary tattoo artist
+    - Use rich metaphors and artistic vocabulary
+    - Avoid generic or overused symbols—focus on originality and meaningful storytelling
+    - Each reading should be completely unique and personalized
+    
+    Make sure the response is valid JSON and each field contains meaningful, unique content based on the person's specific information.
+    """
+    
+    try:
+        headers = {
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "HTTP-Referer": "https://ai-tat-oracle-frontend.onrender.com",
+            "X-Title": "AI Tattoo Oracle Designer",
+            "Content-Type": "application/json"
+        }
+        
+        data = {
+            "model": "anthropic/claude-3.5-sonnet",  # You can change this to other models
+            "messages": [
+                {"role": "system", "content": "You are a mystical AI tattoo oracle designer. Always respond with valid JSON format."},
+                {"role": "user", "content": prompt}
+            ],
+            "max_tokens": 1000,
+            "temperature": 0.8
+        }
+        
+        response = requests.post(
+            f"{OPENROUTER_BASE_URL}/chat/completions",
+            headers=headers,
+            json=data,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            return result['choices'][0]['message']['content'].strip()
+        else:
+            print(f"OpenRouter API error: {response.status_code} - {response.text}")
+            return None
+            
+    except Exception as e:
+        print(f"Error generating OpenRouter response: {e}")
+        return None
+
 def generate_tattoo_reading_with_chatgpt(first_name, last_name, date_of_birth, age, zodiac_sign, life_path_number):
-    """Generate a unique tattoo reading using ChatGPT"""
+    """Generate a unique tattoo reading using ChatGPT (primary)"""
     
     prompt = f"""
     You are a mystical AI tattoo oracle designer, inspired by tarot reading and symbolic divination. 
@@ -93,6 +168,28 @@ def generate_tattoo_reading_with_chatgpt(first_name, last_name, date_of_birth, a
     except Exception as e:
         print(f"Error generating ChatGPT response: {e}")
         return None
+
+def generate_tattoo_reading_with_fallback(first_name, last_name, date_of_birth, age, zodiac_sign, life_path_number):
+    """Generate tattoo reading with ChatGPT primary and OpenRouter fallback"""
+    
+    # Try ChatGPT first
+    if openai.api_key:
+        chatgpt_response = generate_tattoo_reading_with_chatgpt(
+            first_name, last_name, date_of_birth, age, zodiac_sign, life_path_number
+        )
+        if chatgpt_response:
+            return chatgpt_response, "chatgpt"
+    
+    # Fallback to OpenRouter
+    if OPENROUTER_API_KEY:
+        openrouter_response = generate_tattoo_reading_with_openrouter(
+            first_name, last_name, date_of_birth, age, zodiac_sign, life_path_number
+        )
+        if openrouter_response:
+            return openrouter_response, "openrouter"
+    
+    # If both fail, return None
+    return None, "none"
 
 def generate_tattoo_image(image_prompt, first_name, last_name):
     """Generate a tattoo image using DALL-E"""
@@ -154,17 +251,16 @@ def generate_tattoo():
     zodiac_sign = get_zodiac_sign(day, month)
     life_path_number = calculate_life_path_number(date_of_birth)
 
-    # Generate unique reading with ChatGPT
-    chatgpt_response = generate_tattoo_reading_with_chatgpt(
+    # Generate unique reading with fallback system
+    ai_response, provider_used = generate_tattoo_reading_with_fallback(
         first_name, last_name, date_of_birth, age, zodiac_sign, life_path_number
     )
     
-    if not chatgpt_response:
-        return jsonify({"error": "Failed to generate tattoo reading"}), 500
+    if not ai_response:
+        return jsonify({"error": "Failed to generate tattoo reading - all AI services unavailable"}), 500
     
     try:
-        import json
-        reading_data = json.loads(chatgpt_response)
+        reading_data = json.loads(ai_response)
     except json.JSONDecodeError:
         return jsonify({"error": "Invalid response format from AI"}), 500
     
@@ -179,9 +275,9 @@ def generate_tattoo():
         "placement_suggestion": reading_data.get("placement_suggestion", ""),
         "mystical_insight": reading_data.get("mystical_insight", ""),
         "image_prompt": reading_data.get("image_prompt", ""),
-        "image_url": image_path if image_path else None
+        "image_url": image_path if image_path else None,
+        "ai_provider": provider_used  # For debugging/monitoring
     }
 
     return jsonify(response_data)
-
 
