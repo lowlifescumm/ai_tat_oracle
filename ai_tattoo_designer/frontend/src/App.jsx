@@ -16,6 +16,8 @@ function App() {
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [loadingStage, setLoadingStage] = useState('') //
+  const [apiError, setApiError] = useState('') //
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -30,30 +32,58 @@ function App() {
     setLoading(true)
     setError('')
     setResult(null)
+    setLoadingStage('Consulting the mystical oracle...') //
+
+    const API_BASE_URL = 'https://ai-tattoo-api.onrender.com' //
+    const TIMEOUT_DURATION = 30000 // 30 seconds
+
+    // Create timeout promise
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('The oracle is taking longer than usual. Please try again.')), TIMEOUT_DURATION)
+    )
+
+    // Create fetch promise
+    const fetchPromise = fetch(`${API_BASE_URL}/api/generate_tattoo`, { //
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ...formData,
+        age: parseInt(formData.age)
+      })
+    })
 
     try {
-      const response = await fetch('https://ai-tattoo-api.onrender.com/api/generate_tattoo', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...formData,
-          age: parseInt(formData.age)
-        })
-      })
-
+      // Race between fetch and timeout
+      const response = await Promise.race([fetchPromise, timeoutPromise]) //
+      
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to generate tattoo design')
+        if (response.status === 500) { //
+          throw new Error('The mystical forces are temporarily unavailable. Please try again in a moment.') //
+        } else if (response.status === 429) { //
+          throw new Error('The oracle is overwhelmed with requests. Please wait a moment before consulting again.') //
+        } else {
+          const errorData = await response.json() //
+          throw new Error(errorData.error || 'Failed to generate tattoo design') //
+        }
       }
 
+      setLoadingStage('Channeling cosmic energies...') //
       const data = await response.json()
+      
+      // Validate response structure
+      if (!data.symbolic_analysis || !data.core_tattoo_theme) { //
+        throw new Error('Received incomplete reading from the oracle. Please try again.') //
+      }
+      
       setResult(data)
     } catch (err) {
-      setError(err.message)
+      setError(err.message) //
+      setApiError(err.message) //
     } finally {
       setLoading(false)
+      setLoadingStage('') //
     }
   }
 
@@ -142,7 +172,7 @@ function App() {
                   {loading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Consulting the Oracle...
+                      <span className="text-purple-200">{loadingStage}</span> { /* Updated loading display */ }
                     </>
                   ) : (
                     'Reveal My Tattoo Destiny'
@@ -167,13 +197,28 @@ function App() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                {result.image_url && (
+                {/* Dynamic Image Display */}
+                {result.image_url ? ( //
                   <div className="text-center">
                     <img 
-                      src={result.image_url} 
-                      alt="Generated Tattoo Design" 
+                      src={`${API_BASE_URL}${result.image_url}`} // Adjusted image URL
+                      alt="Your Unique Tattoo Design" 
                       className="max-w-full h-auto rounded-lg shadow-lg mx-auto border-2 border-yellow-400/30"
+                      onError={(e) => { //
+                        e.target.style.display = 'none' //
+                        // Show fallback message (you might want to add a visible message here)
+                      }}
                     />
+                    <p className="text-sm text-purple-300 mt-2">
+                      ✨ Your unique design, crafted by the cosmic forces ✨
+                    </p>
+                  </div>
+                ) : (
+                  <div className="text-center p-8 border-2 border-dashed border-yellow-400/30 rounded-lg"> {/* */}
+                    <Sparkles className="mx-auto h-12 w-12 text-yellow-400 mb-4" /> {/* */}
+                    <p className="text-purple-200">
+                      The universe is still weaving your visual destiny... {/* */}
+                    </p>
                   </div>
                 )}
                 
@@ -213,5 +258,4 @@ function App() {
   )
 }
 
-export default App
-
+export default App;
