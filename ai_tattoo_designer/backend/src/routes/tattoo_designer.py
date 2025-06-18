@@ -368,22 +368,22 @@ def generate_tattoo_image_with_complete_fallback(image_prompt, first_name, last_
     """Try multiple image generation services in order"""
     
     # 1. Try DALL-E (OpenAI)
-    if openai.api_key: [cite: 24]
-        image_path = generate_image_with_dalle(image_prompt, first_name, last_name) [cite: 24]
+    if openai.api_key: 
+        image_path = generate_image_with_dalle(image_prompt, first_name, last_name) 
         if image_path:
-            return image_path, "dalle" [cite: 24]
+            return image_path, "dalle" 
     
     # 2. Try Stability AI
-    if STABILITY_API_KEY: [cite: 28]
-        image_path = generate_image_with_stability(image_prompt, first_name, last_name) [cite: 28]
+    if STABILITY_API_KEY: 
+        image_path = generate_image_with_stability(image_prompt, first_name, last_name) 
         if image_path:
-            return image_path, "stability" [cite: 28]
+            return image_path, "stability" 
 
     # 3. Try Replicate 
-    if REPLICATE_API_TOKEN: [cite: 49]
-        image_path = generate_image_with_replicate(image_prompt, first_name, last_name) [cite: 49]
+    if REPLICATE_API_TOKEN: 
+        image_path = generate_image_with_replicate(image_prompt, first_name, last_name) 
         if image_path:
-            return image_path, "replicate" [cite: 49]
+            return image_path, "replicate" 
     
     # 4. Fallback to placeholder or no image
     return generate_placeholder_image(first_name, last_name), "placeholder"
@@ -397,27 +397,27 @@ def generate_tattoo():
     age = data.get("age")
 
     # Validation
-    if not isinstance(first_name, str) or not first_name.strip(): [cite: 34]
+    if not isinstance(first_name, str) or not first_name.strip(): 
         return jsonify({"error": "First name must be a non-empty string"}), 400
-    if not isinstance(last_name, str) or not last_name.strip(): [cite: 35]
+    if not isinstance(last_name, str) or not last_name.strip(): 
         return jsonify({"error": "Last name must be a non-empty string"}), 400
-    if not isinstance(age, int) or age <= 0: [cite: 35]
+    if not isinstance(age, int) or age <= 0: 
         return jsonify({"error": "Age must be a positive integer"}), 400
-    if not date_of_birth: [cite: 35]
+    if not date_of_birth: 
         return jsonify({"error": "Missing input data"}), 400
 
     try:
-        day, month, year = map(int, date_of_birth.split("/")) [cite: 35]
-        dob_date = datetime(year, month, day) [cite: 35]
+        day, month, year = map(int, date_of_birth.split("/")) 
+        dob_date = datetime(year, month, day) 
     except ValueError: [cite: 36]
-        return jsonify({"error": "Invalid date of birth format. Use dd/mm/yyyy"}), 400 [cite: 37]
+        return jsonify({"error": "Invalid date of birth format. Use dd/mm/yyyy"}), 400 
 
     # Calculate astrological data
-    zodiac_sign = get_zodiac_sign(day, month) [cite: 1, 2, 3, 4]
-    life_path_number = calculate_life_path_number(date_of_birth) [cite: 4, 5]
+    zodiac_sign = get_zodiac_sign(day, month) 
+    life_path_number = calculate_life_path_number(date_of_birth) 
 
     # Generate unique reading with fallback system
-    ai_response, text_provider = generate_tattoo_reading_with_fallback( [cite: 22]
+    ai_response, text_provider = generate_tattoo_reading_with_fallback( 
         first_name, last_name, date_of_birth, age, zodiac_sign, life_path_number
     )
     
@@ -425,24 +425,24 @@ def generate_tattoo():
         return jsonify({"error": "Failed to generate tattoo reading - all AI services unavailable"}), 500
     
     try:
-        reading_data = json.loads(ai_response) [cite: 38]
-    except json.JSONDecodeError: [cite: 38]
-        return jsonify({"error": "Invalid response format from AI"}), 500 [cite: 38]
+        reading_data = json.loads(ai_response) 
+    except json.JSONDecodeError: 
+        return jsonify({"error": "Invalid response format from AI"}), 500 
     
     # Generate image based on the AI's description with complete fallback
-    image_path, image_provider = generate_tattoo_image_with_complete_fallback( [cite: 33]
+    image_path, image_provider = generate_tattoo_image_with_complete_fallback( 
         reading_data.get("image_prompt", ""), first_name, last_name
     )
     
     # Prepare response
     response_data = {
-        "symbolic_analysis": reading_data.get("symbolic_analysis", ""), [cite: 39]
-        "core_tattoo_theme": reading_data.get("core_tattoo_theme", ""), [cite: 39]
-        "visual_motif_description": reading_data.get("visual_motif_description", ""), [cite: 39]
-        "placement_suggestion": reading_data.get("placement_suggestion", ""), [cite: 39]
-        "mystical_insight": reading_data.get("mystical_insight", ""), [cite: 39]
-        "image_prompt": reading_data.get("image_prompt", ""), [cite: 39]
-        "image_url": image_path if image_path else None, [cite: 39]
+        "symbolic_analysis": reading_data.get("symbolic_analysis", ""), 
+        "core_tattoo_theme": reading_data.get("core_tattoo_theme", ""), 
+        "visual_motif_description": reading_data.get("visual_motif_description", ""), 
+        "placement_suggestion": reading_data.get("placement_suggestion", ""), 
+        "mystical_insight": reading_data.get("mystical_insight", ""), 
+        "image_prompt": reading_data.get("image_prompt", ""), 
+        "image_url": image_path if image_path else None, 
         "ai_provider": f"text:{text_provider},image:{image_provider}"  # For debugging/monitoring 
     }
 
