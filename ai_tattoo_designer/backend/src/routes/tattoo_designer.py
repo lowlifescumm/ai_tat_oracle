@@ -409,7 +409,7 @@ def generate_tattoo():
     try:
         day, month, year = map(int, date_of_birth.split("/")) 
         dob_date = datetime(year, month, day) 
-    except ValueError: [cite: 36]
+    except ValueError: 
         return jsonify({"error": "Invalid date of birth format. Use dd/mm/yyyy"}), 400 
 
     # Calculate astrological data
