@@ -17,6 +17,10 @@ openai.api_key = os.getenv('OPENAI_API_KEY')
 OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
+# Alternative image generation APIs
+STABILITY_API_KEY = os.getenv('STABILITY_API_KEY')
+REPLICATE_API_TOKEN = os.getenv('REPLICATE_API_TOKEN')
+
 def get_zodiac_sign(day, month):
     if (month == 1 and day >= 20) or (month == 2 and day <= 18):
         return "Aquarius"
@@ -92,7 +96,7 @@ def generate_tattoo_reading_with_openrouter(first_name, last_name, date_of_birth
         }
         
         data = {
-            "model": "anthropic/claude-3.5-sonnet",  # You can change this to other models
+            "model": "anthropic/claude-3.5-sonnet",
             "messages": [
                 {"role": "system", "content": "You are a mystical AI tattoo oracle designer. Always respond with valid JSON format."},
                 {"role": "user", "content": prompt}
@@ -191,8 +195,8 @@ def generate_tattoo_reading_with_fallback(first_name, last_name, date_of_birth, 
     # If both fail, return None
     return None, "none"
 
-def generate_tattoo_image(image_prompt, first_name, last_name):
-    """Generate a tattoo image using DALL-E"""
+def generate_image_with_dalle(image_prompt, first_name, last_name):
+    """Generate image using DALL-E (OpenAI)"""
     try:
         response = openai.Image.create(
             prompt=f"{image_prompt} - black and white tattoo design, detailed line art, mystical style",
@@ -220,8 +224,84 @@ def generate_tattoo_image(image_prompt, first_name, last_name):
             return f"/static/generated_images/{filename}"
         
     except Exception as e:
-        print(f"Error generating image: {e}")
+        print(f"Error generating image with DALL-E: {e}")
         return None
+
+def generate_image_with_stability(image_prompt, first_name, last_name):
+    """Generate image using Stability AI"""
+    
+    if not STABILITY_API_KEY:
+        return None
+    
+    url = "https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image"
+    
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {STABILITY_API_KEY}"
+    }
+    
+    payload = {
+        "text_prompts": [
+            {
+                "text": f"{image_prompt} - black and white tattoo design, detailed line art, mystical style",
+                "weight": 1
+            }
+        ],
+        "cfg_scale": 7,
+        "height": 512,
+        "width": 512,
+        "samples": 1,
+        "steps": 30,
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        
+        if response.status_code == 200:
+            data = response.json()
+            
+            # Save the image
+            unique_id = str(uuid.uuid4())[:8]
+            filename = f"tattoo_{first_name}_{last_name}_{unique_id}.png"
+            filepath = os.path.join("src/static/generated_images", filename)
+            
+            os.makedirs(os.path.dirname(filepath), exist_ok=True)
+            
+            # Decode and save the base64 image
+            image_data = base64.b64decode(data["artifacts"][0]["base64"])
+            with open(filepath, 'wb') as f:
+                f.write(image_data)
+            
+            return f"/static/generated_images/{filename}"
+            
+    except Exception as e:
+        print(f"Error generating image with Stability AI: {e}")
+        return None
+
+def generate_placeholder_image(first_name, last_name):
+    """Generate a placeholder when all image services fail"""
+    # You could create a simple text-based image or use a default image
+    # For now, return None to indicate no image available
+    return None
+
+def generate_tattoo_image_with_complete_fallback(image_prompt, first_name, last_name):
+    """Try multiple image generation services in order"""
+    
+    # 1. Try DALL-E (OpenAI)
+    if openai.api_key:
+        image_path = generate_image_with_dalle(image_prompt, first_name, last_name)
+        if image_path:
+            return image_path, "dalle"
+    
+    # 2. Try Stability AI
+    if STABILITY_API_KEY:
+        image_path = generate_image_with_stability(image_prompt, first_name, last_name)
+        if image_path:
+            return image_path, "stability"
+    
+    # 3. Fallback to placeholder or no image
+    return generate_placeholder_image(first_name, last_name), "placeholder"
 
 @tattoo_bp.route("/generate_tattoo", methods=["POST"])
 def generate_tattoo():
@@ -252,7 +332,7 @@ def generate_tattoo():
     life_path_number = calculate_life_path_number(date_of_birth)
 
     # Generate unique reading with fallback system
-    ai_response, provider_used = generate_tattoo_reading_with_fallback(
+    ai_response, text_provider = generate_tattoo_reading_with_fallback(
         first_name, last_name, date_of_birth, age, zodiac_sign, life_path_number
     )
     
@@ -264,8 +344,10 @@ def generate_tattoo():
     except json.JSONDecodeError:
         return jsonify({"error": "Invalid response format from AI"}), 500
     
-    # Generate image based on the AI's description
-    image_path = generate_tattoo_image(reading_data.get("image_prompt", ""), first_name, last_name)
+    # Generate image based on the AI's description with complete fallback
+    image_path, image_provider = generate_tattoo_image_with_complete_fallback(
+        reading_data.get("image_prompt", ""), first_name, last_name
+    )
     
     # Prepare response
     response_data = {
@@ -276,7 +358,7 @@ def generate_tattoo():
         "mystical_insight": reading_data.get("mystical_insight", ""),
         "image_prompt": reading_data.get("image_prompt", ""),
         "image_url": image_path if image_path else None,
-        "ai_provider": provider_used  # For debugging/monitoring
+        "ai_provider": f"text:{text_provider},image:{image_provider}"  # For debugging/monitoring
     }
 
     return jsonify(response_data)
