@@ -295,7 +295,7 @@ def generate_image_with_replicate(image_prompt, first_name, last_name):
     model_version = "windxtech/tattoo-generator:0fe0fd450695b2fd99305d27a07ee6349943c200dc849d07633a98c24daef9a8" # This line was causing the error
     
     payload = {
-        "version": model_version,  # Remove  from here
+        "version": model_version,# Remove  from here
         "input": {
             "prompt": f"{image_prompt} - black and white tattoo design, detailed line art, mystical style",
             "width": 512,
