@@ -292,10 +292,10 @@ def generate_image_with_replicate(image_prompt, first_name, last_name):
     }
     
     # The specific model and version to use
-    model_version = "windxtech/tattoo-generator:0fe0fd450695b2fd99305d27a07ee6349943c200dc849d07633a98c24daef9a8" [cite: 45]
+    model_version = "windxtech/tattoo-generator:0fe0fd450695b2fd99305d27a07ee6349943c200dc849d07633a98c24daef9a8" # This line was causing the error
     
     payload = {
-        "version": model_version, [cite: 42]
+        "version": model_version,  # Remove  from here
         "input": {
             "prompt": f"{image_prompt} - black and white tattoo design, detailed line art, mystical style",
             "width": 512,
@@ -325,37 +325,37 @@ def generate_image_with_replicate(image_prompt, first_name, last_name):
             get_response.raise_for_status()
             prediction_status = get_response.json()
             
-            if prediction_status["status"] == "succeeded": [cite: 59]
-                image_url = prediction_status["output"][0] [cite: 54]
+            if prediction_status["status"] == "succeeded":
+                image_url = prediction_status["output"][0]
                 
                 # Download and save the image
                 image_response = requests.get(image_url)
                 image_response.raise_for_status()
                 
-                unique_id = str(uuid.uuid4())[:8] [cite: 55]
-                filename = f"tattoo_{first_name}_{last_name}_{unique_id}.png" [cite: 55]
-                filepath = os.path.join("src/static/generated_images", filename) [cite: 55]
+                unique_id = str(uuid.uuid4())[:8]
+                filename = f"tattoo_{first_name}_{last_name}_{unique_id}.png"
+                filepath = os.path.join("src/static/generated_images", filename)
                 
-                os.makedirs(os.path.dirname(filepath), exist_ok=True) [cite: 55]
-                with open(filepath, 'wb') as f: [cite: 56]
-                    f.write(image_response.content) [cite: 56]
+                os.makedirs(os.path.dirname(filepath), exist_ok=True)
+                with open(filepath, 'wb') as f:
+                    f.write(image_response.content)
                 
                 return f"/static/generated_images/{filename}"
-            elif prediction_status["status"] == "failed": [cite: 59]
-                print(f"Replicate prediction failed: {prediction_status.get('error', 'Unknown error')}") [cite: 57]
+            elif prediction_status["status"] == "failed":
+                print(f"Replicate prediction failed: {prediction_status.get('error', 'Unknown error')}")
                 return None
-            elif prediction_status["status"] in ["starting", "processing", "queued"]: [cite: 57]
+            elif prediction_status["status"] in ["starting", "processing", "queued"]:
                 import time
-                time.sleep(2) # Wait for 2 seconds before polling again 
+                time.sleep(2) # Wait for 2 seconds before polling again
             else:
-                print(f"Unexpected Replicate status: {prediction_status['status']}") [cite: 58]
+                print(f"Unexpected Replicate status: {prediction_status['status']}")
                 return None
 
-    except requests.exceptions.RequestException as req_err: [cite: 58]
-        print(f"Network or HTTP error with Replicate: {req_err}") [cite: 58]
+    except requests.exceptions.RequestException as req_err:
+        print(f"Network or HTTP error with Replicate: {req_err}")
         return None
-    except Exception as e: [cite: 58]
-        print(f"Error generating image with Replicate: {e}") [cite: 58]
+    except Exception as e:
+        print(f"Error generating image with Replicate: {e}")
         return None
 
 def generate_placeholder_image(first_name, last_name):
