@@ -197,27 +197,24 @@ function App() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Dynamic Image Display */}
-                {result.image_url ? ( //
+                {/* Dynamic Image Display - NEW SECTION */}
+                {result.image_url ? (
                   <div className="text-center">
                     <img 
-                      src={`${API_BASE_URL}${result.image_url}`} // Adjusted image URL
+                      src={`https://ai-tattoo-api.onrender.com${result.image_url}`} 
                       alt="Your Unique Tattoo Design" 
                       className="max-w-full h-auto rounded-lg shadow-lg mx-auto border-2 border-yellow-400/30"
-                      onError={(e) => { //
-                        e.target.style.display = 'none' //
-                        // Show fallback message (you might want to add a visible message here)
-                      }}
+                      // Removed onError, as per your request to just handle the placeholder
                     />
                     <p className="text-sm text-purple-300 mt-2">
                       ✨ Your unique design, crafted by the cosmic forces ✨
                     </p>
                   </div>
                 ) : (
-                  <div className="text-center p-8 border-2 border-dashed border-yellow-400/30 rounded-lg"> {/* */}
-                    <Sparkles className="mx-auto h-12 w-12 text-yellow-400 mb-4" /> {/* */}
+                  <div className="text-center p-8 border-2 border-dashed border-yellow-400/30 rounded-lg">
+                    <Sparkles className="mx-auto h-12 w-12 text-yellow-400 mb-4" />
                     <p className="text-purple-200">
-                      The universe is still weaving your visual destiny... {/* */}
+                      Your mystical reading is complete! Image generation temporarily unavailable.
                     </p>
                   </div>
                 )}
