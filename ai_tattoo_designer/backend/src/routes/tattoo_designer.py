@@ -53,39 +53,95 @@ def calculate_life_path_number(dob):
         dob_sum = sum(int(digit) for digit in str(dob_sum))
     return dob_sum
 
-def generate_tattoo_reading_with_openrouter(first_name, last_name, date_of_birth, age, zodiac_sign, life_path_number):
-    """Generate a unique tattoo reading using OpenRouter as backup"""
+def build_enhanced_prompt(first_name, last_name, date_of_birth, age, zodiac_sign, life_path_number, 
+                         birthplace=None, favorite_element=None, preferred_aesthetic=None, 
+                         spirit_animal=None, life_theme=None, personal_story=None, cultural_affiliation=None):
+    """Build an enhanced prompt with additional personalization data"""
     
-    prompt = f"""
+    base_info = f"""
     You are a mystical AI tattoo oracle designer, inspired by tarot reading and symbolic divination. 
     Your task is to create a unique, meaningful tattoo design concept based on the following information:
     
+    CORE IDENTITY:
     - First Name: {first_name}
     - Last Name: {last_name}
     - Date of Birth: {date_of_birth}
     - Age: {age}
     - Zodiac Sign: {zodiac_sign}
     - Life Path Number: {life_path_number}
+    """
+    
+    # Add optional personalization fields
+    additional_info = "\n    DEEPER PERSONALIZATION:"
+    
+    if birthplace:
+        additional_info += f"\n    - Birthplace: {birthplace} (incorporate regional symbolism, geographic elements, or local mythology)"
+    
+    if favorite_element:
+        additional_info += f"\n    - Favorite Element: {favorite_element} (integrate elemental qualities - Fire: bold flames/energy, Water: flowing lines/depth, Earth: grounding/stability, Air: movement/freedom)"
+    
+    if preferred_aesthetic:
+        additional_info += f"\n    - Preferred Aesthetic: {preferred_aesthetic} (design should reflect this visual style and artistic approach)"
+    
+    if spirit_animal:
+        additional_info += f"\n    - Spirit Animal: {spirit_animal} (incorporate this creature's symbolic meaning and characteristics)"
+    
+    if life_theme:
+        additional_info += f"\n    - Life Theme/Value: {life_theme} (weave this concept throughout the design's symbolism)"
+    
+    if personal_story:
+        additional_info += f"\n    - Personal Journey: {personal_story} (honor this experience through symbolic representation)"
+    
+    if cultural_affiliation:
+        additional_info += f"\n    - Cultural/Spiritual Heritage: {cultural_affiliation} (incorporate relevant symbols, patterns, or motifs from this tradition)"
+    
+    # If no additional info was provided, don't add the section
+    if additional_info == "\n    DEEPER PERSONALIZATION:":
+        additional_info = ""
+    
+    format_instructions = """
     
     Please provide your response in the following JSON format:
-    {{
-        "symbolic_analysis": "Interpret name numerology, zodiac sign, and any relevant symbolic meanings derived from DOB and age.",
-        "core_tattoo_theme": "Describe the emotional, spiritual, or archetypal essence the tattoo should express.",
-        "visual_motif_description": "Provide a vivid, imaginative description of the tattoo's visual elements (symbols, shapes, animals, patterns, etc.).",
-        "placement_suggestion": "Recommend ideal body placement and size (e.g., upper forearm, chest, sleeve, ankle).",
-        "mystical_insight": "End with a brief fortune-style message tied to the design meaning.",
-        "image_prompt": "A detailed prompt for generating the tattoo image, describing the visual elements in a way suitable for AI image generation."
-    }}
+    {
+        "symbolic_analysis": "Interpret name numerology, zodiac sign, and any relevant symbolic meanings derived from all provided information. Weave together the personal elements into a cohesive narrative.",
+        "core_tattoo_theme": "Describe the emotional, spiritual, or archetypal essence the tattoo should express, incorporating the deeper personalization elements.",
+        "visual_motif_description": "Provide a vivid, imaginative description of the tattoo's visual elements (symbols, shapes, animals, patterns, etc.) that incorporates the specified aesthetic preferences, elements, and cultural influences.",
+        "placement_suggestion": "Recommend ideal body placement and size (e.g., upper forearm, chest, sleeve, ankle) considering the design's complexity and personal significance.",
+        "mystical_insight": "End with a brief fortune-style message tied to the design meaning and the person's journey.",
+        "image_prompt": "A detailed prompt for generating the tattoo image, describing the visual elements in a way suitable for AI image generation. Include specific style, cultural elements, and aesthetic preferences mentioned."
+    }
+    
+    DESIGN GUIDELINES:
+    - Create a mythic story that connects all the personal elements provided
+    - If birthplace is mentioned, incorporate geographic or regional symbolism
+    - If elemental preference is given, let it influence the design's texture and flow
+    - If aesthetic preference is specified, ensure the design reflects that artistic style
+    - If spirit animal is mentioned, make it central to the design's meaning
+    - If life theme is provided, let it guide the overall symbolic message
+    - If personal story is shared, honor it through metaphorical representation
+    - If cultural affiliation is mentioned, respectfully incorporate authentic elements
     
     Style & Tone:
     - Mysterious yet poetic
     - Tarot card reader meets visionary tattoo artist
     - Use rich metaphors and artistic vocabulary
     - Avoid generic or overused symbols—focus on originality and meaningful storytelling
-    - Each reading should be completely unique and personalized
+    - Each reading should be completely unique and deeply personalized
+    - Tell a short mythic story of this person's journey and destiny
     
-    Make sure the response is valid JSON and each field contains meaningful, unique content based on the person's specific information.
+    Make sure the response is valid JSON and each field contains meaningful, unique content based on ALL the person's provided information.
     """
+    
+    return base_info + additional_info + format_instructions
+
+def generate_tattoo_reading_with_openrouter(first_name, last_name, date_of_birth, age, zodiac_sign, life_path_number,
+                                          birthplace=None, favorite_element=None, preferred_aesthetic=None, 
+                                          spirit_animal=None, life_theme=None, personal_story=None, cultural_affiliation=None):
+    """Generate a unique tattoo reading using OpenRouter as backup"""
+    
+    prompt = build_enhanced_prompt(first_name, last_name, date_of_birth, age, zodiac_sign, life_path_number,
+                                 birthplace, favorite_element, preferred_aesthetic, spirit_animal, 
+                                 life_theme, personal_story, cultural_affiliation)
     
     try:
         headers = {
@@ -101,7 +157,7 @@ def generate_tattoo_reading_with_openrouter(first_name, last_name, date_of_birth
                 {"role": "system", "content": "You are a mystical AI tattoo oracle designer. Always respond with valid JSON format."},
                 {"role": "user", "content": prompt}
             ],
-            "max_tokens": 1000,
+            "max_tokens": 1200,  # Increased for more detailed responses
             "temperature": 0.8
         }
         
@@ -123,39 +179,14 @@ def generate_tattoo_reading_with_openrouter(first_name, last_name, date_of_birth
         print(f"Error generating OpenRouter response: {e}")
         return None
 
-def generate_tattoo_reading_with_chatgpt(first_name, last_name, date_of_birth, age, zodiac_sign, life_path_number):
+def generate_tattoo_reading_with_chatgpt(first_name, last_name, date_of_birth, age, zodiac_sign, life_path_number,
+                                        birthplace=None, favorite_element=None, preferred_aesthetic=None, 
+                                        spirit_animal=None, life_theme=None, personal_story=None, cultural_affiliation=None):
     """Generate a unique tattoo reading using ChatGPT (primary)"""
     
-    prompt = f"""
-    You are a mystical AI tattoo oracle designer, inspired by tarot reading and symbolic divination. 
-    Your task is to create a unique, meaningful tattoo design concept based on the following information:
-    
-    - First Name: {first_name}
-    - Last Name: {last_name}
-    - Date of Birth: {date_of_birth}
-    - Age: {age}
-    - Zodiac Sign: {zodiac_sign}
-    - Life Path Number: {life_path_number}
-    
-    Please provide your response in the following JSON format:
-    {{
-        "symbolic_analysis": "Interpret name numerology, zodiac sign, and any relevant symbolic meanings derived from DOB and age.",
-        "core_tattoo_theme": "Describe the emotional, spiritual, or archetypal essence the tattoo should express.",
-        "visual_motif_description": "Provide a vivid, imaginative description of the tattoo's visual elements (symbols, shapes, animals, patterns, etc.).",
-        "placement_suggestion": "Recommend ideal body placement and size (e.g., upper forearm, chest, sleeve, ankle).",
-        "mystical_insight": "End with a brief fortune-style message tied to the design meaning.",
-        "image_prompt": "A detailed prompt for generating the tattoo image, describing the visual elements in a way suitable for AI image generation."
-    }}
-    
-    Style & Tone:
-    - Mysterious yet poetic
-    - Tarot card reader meets visionary tattoo artist
-    - Use rich metaphors and artistic vocabulary
-    - Avoid generic or overused symbols—focus on originality and meaningful storytelling
-    - Each reading should be completely unique and personalized
-    
-    Make sure the response is valid JSON and each field contains meaningful, unique content based on the person's specific information.
-    """
+    prompt = build_enhanced_prompt(first_name, last_name, date_of_birth, age, zodiac_sign, life_path_number,
+                                 birthplace, favorite_element, preferred_aesthetic, spirit_animal, 
+                                 life_theme, personal_story, cultural_affiliation)
     
     try:
         response = openai.ChatCompletion.create(
@@ -164,7 +195,7 @@ def generate_tattoo_reading_with_chatgpt(first_name, last_name, date_of_birth, a
                 {"role": "system", "content": "You are a mystical AI tattoo oracle designer. Always respond with valid JSON format."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=1000,
+            max_tokens=1200,  # Increased for more detailed responses
             temperature=0.8
         )
         
@@ -173,13 +204,17 @@ def generate_tattoo_reading_with_chatgpt(first_name, last_name, date_of_birth, a
         print(f"Error generating ChatGPT response: {e}")
         return None
 
-def generate_tattoo_reading_with_fallback(first_name, last_name, date_of_birth, age, zodiac_sign, life_path_number):
+def generate_tattoo_reading_with_fallback(first_name, last_name, date_of_birth, age, zodiac_sign, life_path_number,
+                                        birthplace=None, favorite_element=None, preferred_aesthetic=None, 
+                                        spirit_animal=None, life_theme=None, personal_story=None, cultural_affiliation=None):
     """Generate tattoo reading with ChatGPT primary and OpenRouter fallback"""
     
     # Try ChatGPT first
     if openai.api_key:
         chatgpt_response = generate_tattoo_reading_with_chatgpt(
-            first_name, last_name, date_of_birth, age, zodiac_sign, life_path_number
+            first_name, last_name, date_of_birth, age, zodiac_sign, life_path_number,
+            birthplace, favorite_element, preferred_aesthetic, spirit_animal, 
+            life_theme, personal_story, cultural_affiliation
         )
         if chatgpt_response:
             return chatgpt_response, "chatgpt"
@@ -187,7 +222,9 @@ def generate_tattoo_reading_with_fallback(first_name, last_name, date_of_birth, 
     # Fallback to OpenRouter
     if OPENROUTER_API_KEY:
         openrouter_response = generate_tattoo_reading_with_openrouter(
-            first_name, last_name, date_of_birth, age, zodiac_sign, life_path_number
+            first_name, last_name, date_of_birth, age, zodiac_sign, life_path_number,
+            birthplace, favorite_element, preferred_aesthetic, spirit_animal, 
+            life_theme, personal_story, cultural_affiliation
         )
         if openrouter_response:
             return openrouter_response, "openrouter"
@@ -306,12 +343,23 @@ def generate_tattoo_image_with_complete_fallback(image_prompt, first_name, last_
 @tattoo_bp.route("/generate_tattoo", methods=["POST"])
 def generate_tattoo():
     data = request.get_json()
+    
+    # Core required fields
     first_name = data.get("first_name")
     last_name = data.get("last_name")
     date_of_birth = data.get("date_of_birth")
     age = data.get("age")
+    
+    # Optional personalization fields
+    birthplace = data.get("birthplace")
+    favorite_element = data.get("favorite_element")
+    preferred_aesthetic = data.get("preferred_aesthetic")
+    spirit_animal = data.get("spirit_animal")
+    life_theme = data.get("life_theme")
+    personal_story = data.get("personal_story")
+    cultural_affiliation = data.get("cultural_affiliation")
 
-    # Validation
+    # Validation for required fields
     if not isinstance(first_name, str) or not first_name.strip():
         return jsonify({"error": "First name must be a non-empty string"}), 400
     if not isinstance(last_name, str) or not last_name.strip():
@@ -331,9 +379,11 @@ def generate_tattoo():
     zodiac_sign = get_zodiac_sign(day, month)
     life_path_number = calculate_life_path_number(date_of_birth)
 
-    # Generate unique reading with fallback system
+    # Generate unique reading with enhanced personalization and fallback system
     ai_response, text_provider = generate_tattoo_reading_with_fallback(
-        first_name, last_name, date_of_birth, age, zodiac_sign, life_path_number
+        first_name, last_name, date_of_birth, age, zodiac_sign, life_path_number,
+        birthplace, favorite_element, preferred_aesthetic, spirit_animal, 
+        life_theme, personal_story, cultural_affiliation
     )
     
     if not ai_response:
@@ -358,7 +408,16 @@ def generate_tattoo():
         "mystical_insight": reading_data.get("mystical_insight", ""),
         "image_prompt": reading_data.get("image_prompt", ""),
         "image_url": image_path if image_path else None,
-        "ai_provider": f"text:{text_provider},image:{image_provider}"  # For debugging/monitoring
+        "ai_provider": f"text:{text_provider},image:{image_provider}",  # For debugging/monitoring
+        "personalization_used": {
+            "birthplace": bool(birthplace),
+            "favorite_element": bool(favorite_element),
+            "preferred_aesthetic": bool(preferred_aesthetic),
+            "spirit_animal": bool(spirit_animal),
+            "life_theme": bool(life_theme),
+            "personal_story": bool(personal_story),
+            "cultural_affiliation": bool(cultural_affiliation)
+        }
     }
 
     return jsonify(response_data)
