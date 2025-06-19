@@ -1,12 +1,11 @@
-import requests
-import os
-import uuid
-import time
-import base64
-from io import BytesIO
 from flask import Blueprint, request, jsonify
 from datetime import datetime
+import os
 import openai
+import uuid
+import requests
+from io import BytesIO
+import base64
 import json
 
 tattoo_bp = Blueprint("tattoo_bp", __name__)
@@ -20,7 +19,7 @@ OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 # Alternative image generation APIs
 STABILITY_API_KEY = os.getenv('STABILITY_API_KEY')
-REPLICATE_API_TOKEN = os.getenv('REPLICATE_API_TOKEN') # Ensure this is loaded
+REPLICATE_API_TOKEN = os.getenv('REPLICATE_API_TOKEN')
 
 def get_zodiac_sign(day, month):
     if (month == 1 and day >= 20) or (month == 2 and day <= 18):
@@ -58,7 +57,8 @@ def generate_tattoo_reading_with_openrouter(first_name, last_name, date_of_birth
     """Generate a unique tattoo reading using OpenRouter as backup"""
     
     prompt = f"""
-    You are a mystical AI tattoo oracle designer, inspired by tarot reading and symbolic divination. Your task is to create a unique, meaningful tattoo design concept based on the following information:
+    You are a mystical AI tattoo oracle designer, inspired by tarot reading and symbolic divination. 
+    Your task is to create a unique, meaningful tattoo design concept based on the following information:
     
     - First Name: {first_name}
     - Last Name: {last_name}
@@ -127,7 +127,8 @@ def generate_tattoo_reading_with_chatgpt(first_name, last_name, date_of_birth, a
     """Generate a unique tattoo reading using ChatGPT (primary)"""
     
     prompt = f"""
-    You are a mystical AI tattoo oracle designer, inspired by tarot reading and symbolic divination. Your task is to create a unique, meaningful tattoo design concept based on the following information:
+    You are a mystical AI tattoo oracle designer, inspired by tarot reading and symbolic divination. 
+    Your task is to create a unique, meaningful tattoo design concept based on the following information:
     
     - First Name: {first_name}
     - Last Name: {last_name}
@@ -278,86 +279,6 @@ def generate_image_with_stability(image_prompt, first_name, last_name):
         print(f"Error generating image with Stability AI: {e}")
         return None
 
-def generate_image_with_replicate(image_prompt, first_name, last_name):
-    """Generate image using Replicate"""
-    
-    api_key = os.getenv("REPLICATE_API_TOKEN")
-    if not api_key:
-        print("REPLICATE_API_TOKEN not set.")
-        return None
-    
-    headers = {
-        "Authorization": f"Token {api_key}",
-        "Content-Type": "application/json"
-    }
-    
-    # The specific model and version to use
-    model_version = "windxtech/tattoo-generator:0fe0fd450695b2fd99305d27a07ee6349943c200dc849d07633a98c24daef9a8" 
-    
-    payload = {
-        "version": model_version,
-        "input": {
-            "prompt": f"{image_prompt} - black and white tattoo design, detailed line art, mystical style",
-            "width": 512,
-            "height": 512,
-            "num_outputs": 1
-        }
-    }
-    
-    try:
-        # Start the prediction
-        start_response = requests.post(
-            "https://api.replicate.com/v1/predictions",
-            headers=headers,
-            json=payload
-        )
-        start_response.raise_for_status() # Raise an exception for HTTP errors
-        prediction_data = start_response.json()
-        
-        prediction_id = prediction_data["id"]
-        
-        # Poll for the result
-        while True:
-            get_response = requests.get(
-                f"https://api.replicate.com/v1/predictions/{prediction_id}",
-                headers=headers
-            )
-            get_response.raise_for_status()
-            prediction_status = get_response.json()
-            
-            if prediction_status["status"] == "succeeded":
-                image_url = prediction_status["output"][0]
-                
-                # Download and save the image
-                image_response = requests.get(image_url)
-                image_response.raise_for_status()
-                
-                unique_id = str(uuid.uuid4())[:8]
-                filename = f"tattoo_{first_name}_{last_name}_{unique_id}.png"
-                filepath = os.path.join("src/static/generated_images", filename)
-                
-                os.makedirs(os.path.dirname(filepath), exist_ok=True)
-                with open(filepath, 'wb') as f:
-                    f.write(image_response.content)
-                
-                return f"/static/generated_images/{filename}"
-            elif prediction_status["status"] == "failed":
-                print(f"Replicate prediction failed: {prediction_status.get('error', 'Unknown error')}")
-                return None
-            elif prediction_status["status"] in ["starting", "processing", "queued"]:
-                import time
-                time.sleep(2) # Wait for 2 seconds before polling again
-            else:
-                print(f"Unexpected Replicate status: {prediction_status['status']}")
-                return None
-
-    except requests.exceptions.RequestException as req_err:
-        print(f"Network or HTTP error with Replicate: {req_err}")
-        return None
-    except Exception as e:
-        print(f"Error generating image with Replicate: {e}")
-        return None
-
 def generate_placeholder_image(first_name, last_name):
     """Generate a placeholder when all image services fail"""
     # You could create a simple text-based image or use a default image
@@ -368,24 +289,18 @@ def generate_tattoo_image_with_complete_fallback(image_prompt, first_name, last_
     """Try multiple image generation services in order"""
     
     # 1. Try DALL-E (OpenAI)
-    if openai.api_key: 
-        image_path = generate_image_with_dalle(image_prompt, first_name, last_name) 
+    if openai.api_key:
+        image_path = generate_image_with_dalle(image_prompt, first_name, last_name)
         if image_path:
-            return image_path, "dalle" 
+            return image_path, "dalle"
     
     # 2. Try Stability AI
-    if STABILITY_API_KEY: 
-        image_path = generate_image_with_stability(image_prompt, first_name, last_name) 
+    if STABILITY_API_KEY:
+        image_path = generate_image_with_stability(image_prompt, first_name, last_name)
         if image_path:
-            return image_path, "stability" 
-
-    # 3. Try Replicate 
-    if REPLICATE_API_TOKEN: 
-        image_path = generate_image_with_replicate(image_prompt, first_name, last_name) 
-        if image_path:
-            return image_path, "replicate" 
+            return image_path, "stability"
     
-    # 4. Fallback to placeholder or no image
+    # 3. Fallback to placeholder or no image
     return generate_placeholder_image(first_name, last_name), "placeholder"
 
 @tattoo_bp.route("/generate_tattoo", methods=["POST"])
@@ -397,27 +312,27 @@ def generate_tattoo():
     age = data.get("age")
 
     # Validation
-    if not isinstance(first_name, str) or not first_name.strip(): 
+    if not isinstance(first_name, str) or not first_name.strip():
         return jsonify({"error": "First name must be a non-empty string"}), 400
-    if not isinstance(last_name, str) or not last_name.strip(): 
+    if not isinstance(last_name, str) or not last_name.strip():
         return jsonify({"error": "Last name must be a non-empty string"}), 400
-    if not isinstance(age, int) or age <= 0: 
+    if not isinstance(age, int) or age <= 0:
         return jsonify({"error": "Age must be a positive integer"}), 400
-    if not date_of_birth: 
+    if not date_of_birth:
         return jsonify({"error": "Missing input data"}), 400
 
     try:
-        day, month, year = map(int, date_of_birth.split("/")) 
-        dob_date = datetime(year, month, day) 
-    except ValueError: 
-        return jsonify({"error": "Invalid date of birth format. Use dd/mm/yyyy"}), 400 
+        day, month, year = map(int, date_of_birth.split("/"))
+        dob_date = datetime(year, month, day)
+    except ValueError:
+        return jsonify({"error": "Invalid date of birth format. Use dd/mm/yyyy"}), 400
 
     # Calculate astrological data
-    zodiac_sign = get_zodiac_sign(day, month) 
-    life_path_number = calculate_life_path_number(date_of_birth) 
+    zodiac_sign = get_zodiac_sign(day, month)
+    life_path_number = calculate_life_path_number(date_of_birth)
 
     # Generate unique reading with fallback system
-    ai_response, text_provider = generate_tattoo_reading_with_fallback( 
+    ai_response, text_provider = generate_tattoo_reading_with_fallback(
         first_name, last_name, date_of_birth, age, zodiac_sign, life_path_number
     )
     
@@ -425,25 +340,26 @@ def generate_tattoo():
         return jsonify({"error": "Failed to generate tattoo reading - all AI services unavailable"}), 500
     
     try:
-        reading_data = json.loads(ai_response) 
-    except json.JSONDecodeError: 
-        return jsonify({"error": "Invalid response format from AI"}), 500 
+        reading_data = json.loads(ai_response)
+    except json.JSONDecodeError:
+        return jsonify({"error": "Invalid response format from AI"}), 500
     
     # Generate image based on the AI's description with complete fallback
-    image_path, image_provider = generate_tattoo_image_with_complete_fallback( 
+    image_path, image_provider = generate_tattoo_image_with_complete_fallback(
         reading_data.get("image_prompt", ""), first_name, last_name
     )
     
     # Prepare response
     response_data = {
-        "symbolic_analysis": reading_data.get("symbolic_analysis", ""), 
-        "core_tattoo_theme": reading_data.get("core_tattoo_theme", ""), 
-        "visual_motif_description": reading_data.get("visual_motif_description", ""), 
-        "placement_suggestion": reading_data.get("placement_suggestion", ""), 
-        "mystical_insight": reading_data.get("mystical_insight", ""), 
-        "image_prompt": reading_data.get("image_prompt", ""), 
-        "image_url": image_path if image_path else None, 
-        "ai_provider": f"text:{text_provider},image:{image_provider}"  # For debugging/monitoring 
+        "symbolic_analysis": reading_data.get("symbolic_analysis", ""),
+        "core_tattoo_theme": reading_data.get("core_tattoo_theme", ""),
+        "visual_motif_description": reading_data.get("visual_motif_description", ""),
+        "placement_suggestion": reading_data.get("placement_suggestion", ""),
+        "mystical_insight": reading_data.get("mystical_insight", ""),
+        "image_prompt": reading_data.get("image_prompt", ""),
+        "image_url": image_path if image_path else None,
+        "ai_provider": f"text:{text_provider},image:{image_provider}"  # For debugging/monitoring
     }
 
     return jsonify(response_data)
+
